@@ -1,40 +1,80 @@
 #pragma once
 
-#include "./windows/windows.h"
-#include "logging/logging.h"
-#include "lvgl/lvgl.h"
-#include "net/prov.h"
-#include "protocol/devproto.pb-c.h"
-#include "utils/variant.h"
+#include "enum.h"
 
-// Actions
-#define ARGS_IDENT(x) x
-#define FMT_BOOL "%s"
-#define ARGS_BOOL(x) x ? "true" : "false"
+// VARIANT is a tagged union type (similar to Rust's enum with data)
+//
+// To define a variant, first define format helper macros:
+//
+// #define ARGS_IDENT(x) x
+// #define FMT_BOOL "%s"
+// #define ARGS_BOOL(x) x ? "true" : "false"
+//
+// Then define an X-macro:
+//
+// #define MY_VARIANT_FOREACH(X, ...)                                \
+//   X(int, count, "%d", ARGS_IDENT, __VA_ARGS__)                   \
+//   X(bool, enabled, FMT_BOOL, ARGS_BOOL, __VA_ARGS__)             \
+//   X(const char*, name, "%s", ARGS_IDENT, __VA_ARGS__)
+//
+// Each X entry takes:
+//  * type          - the C type for this variant member
+//  * name          - identifier for this variant member
+//  * fmt           - printf format string for logging
+//  * args          - macro to transform the value for printf
+//  * __VA_ARGS__   - used internally
+//
+// VARIANT_DECLARE(MY_VARIANT_FOREACH, my_variant_t, MY_LOG_FN)
+//
+// The VARIANT_DECLARE macro takes:
+//  * a foreach x-macro
+//  * a variant type name
+//  * a log function macro with signature LOG_FN(fmt, ...)
+//
+// This generates:
+//  * my_variant_t_tag_t         - enum for the tag
+//  * my_variant_t               - struct with tag + anonymous union
+//  * my_variant_t_<name>(value) - constructor for each member
+//  * my_variant_t_log(variant)  - logs the active member
 
-#define ACTION_EVENT_ENUM_FOREACH(X, ...)            \
-  X(ACTION_DISMISS_LOCK_SCREEN, __VA_ARGS__)         \
-  X(ACTION_DISMISS_LOCK_SCREEN_TIMEOUT, __VA_ARGS__) \
-  X(ACTION_EVENT_TOGGLE_FOCUS_MODE, __VA_ARGS__)     \
-  X(ACTION_EVENT_EXTEND_BOOKING, __VA_ARGS__)        \
-  X(ACTION_EVENT_OPEN_MENU, __VA_ARGS__)             \
-  X(ACTION_EVENT_CLOSE_MENU, __VA_ARGS__)
+#define VARIANT_DECLARE(FOREACH, VARIANT_NAME, LOG_FN)                  \
+  typedef enum {                                                        \
+    FOREACH(_VARIANT_FE_TAG_VALUES, VARIANT_NAME)                       \
+  } VARIANT_NAME##_tag_t;                                               \
+  typedef struct {                                                      \
+    VARIANT_NAME##_tag_t tag;                                           \
+    union {                                                             \
+      FOREACH(_VARIANT_FE_UNION_MEMBERS, VARIANT_NAME)                  \
+    };                                                                  \
+  } VARIANT_NAME;                                                       \
+  FOREACH(_VARIANT_FE_CONSTRUCTORS, VARIANT_NAME)                       \
+  static inline void VARIANT_NAME##_log(VARIANT_NAME variant) {         \
+    switch (variant.tag) {                                              \
+      FOREACH(_VARIANT_FE_LOG_CASES, VARIANT_NAME, LOG_FN)              \
+      default:                                                          \
+        break;                                                          \
+    }                                                                   \
+  }
 
-ENUM_DECLARE(ACTION_EVENT_ENUM_FOREACH, action_event_t);
+// Various internal macros
+// _VARIANT_FE_ macros are all macros that can be passed to FOREACH.
+// They use ... to accept extra trailing arguments from VARIANT_DECLARE.
 
-// Create app_action_t, a variant type that contains all actions possible to
-// undertake using dispatch
-#define APP_ACTION_VARIANT_FOREACH(X, ...)                                    \
-  X(provisioning_status_t, net_prov_status, "%u", ARGS_IDENT, __VA_ARGS__)    \
-  X(bool, net_wifi_has_ip, FMT_BOOL, ARGS_BOOL, __VA_ARGS__)                  \
-  X(bool, net_connected, FMT_BOOL, ARGS_BOOL, __VA_ARGS__)                    \
-  X(action_event_t, event, "%s", action_event_t_get_str, __VA_ARGS__)         \
-  X(Devproto__DeviceState*, device_state_updated, "%p", ARGS_IDENT,           \
-    __VA_ARGS__)                                                              \
-  X(bool, human_present, FMT_BOOL, ARGS_BOOL, __VA_ARGS__)                    \
-  X(temporary_modal_t, show_temporary_modal, "%s", temporary_modal_t_get_str, \
-    __VA_ARGS__)
+#define _VARIANT_FE_TAG_VALUES(TYPE, NAME, FMT, ARGS, VARIANT_NAME, ...) \
+  VARIANT_NAME##_TAG_##NAME,
 
-#define LOG_ACTION(FMT, ...) LOG_TAG_INFO(FMT, "action", __VA_ARGS__)
+#define _VARIANT_FE_UNION_MEMBERS(TYPE, NAME, FMT, ARGS, ...) \
+  TYPE NAME;
 
-VARIANT_DECLARE(APP_ACTION_VARIANT_FOREACH, app_action_t, LOG_ACTION)
+#define _VARIANT_FE_CONSTRUCTORS(TYPE, NAME, FMT, ARGS, VARIANT_NAME, ...) \
+  static inline VARIANT_NAME VARIANT_NAME##_##NAME(TYPE value) {           \
+    return (VARIANT_NAME){                                                 \
+        .tag = VARIANT_NAME##_TAG_##NAME,                                  \
+        .NAME = value,                                                     \
+    };                                                                     \
+  }
+
+#define _VARIANT_FE_LOG_CASES(TYPE, NAME, FMT, ARGS, VARIANT_NAME, LOG_FN) \
+  case VARIANT_NAME##_TAG_##NAME:                                           \
+    LOG_FN(#NAME "=" FMT, ARGS(variant.NAME));                              \
+    break;

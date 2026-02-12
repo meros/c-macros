@@ -1,0 +1,15 @@
+# Nix
+result
+result-*
+
+# C build artifacts
+*.o
+*.so
+*.a
+*.dylib
+*.out
+
+# Editor
+*~
+*.swp
+*.swo
