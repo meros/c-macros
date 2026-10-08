@@ -13,3 +13,6 @@ result-*
 *~
 *.swp
 *.swo
+
+# Claude Code
+.claude/
