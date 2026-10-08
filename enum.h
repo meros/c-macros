@@ -3,12 +3,12 @@
 // ENUM is an extension to a basic enum
 //
 // To define an enum, first define an X-macro on this format:
-//
-// #define CONNECTION_STATUS_ENUM_FOREACH(X, ...)   \
-//   X(CONNECTION_STATUS_DISCONNECTED, __VA_ARGS__) \
-//   X(CONNECTION_STATUS_CONNECTING, __VA_ARGS__)   \
-//   X(CONNECTION_STATUS_CONNECTED, __VA_ARGS__)
-//
+/*
+   #define CONNECTION_STATUS_ENUM_FOREACH(X, ...)   \
+     X(CONNECTION_STATUS_DISCONNECTED, __VA_ARGS__) \
+     X(CONNECTION_STATUS_CONNECTING, __VA_ARGS__)   \
+     X(CONNECTION_STATUS_CONNECTED, __VA_ARGS__)
+*/
 // ENUM_DECLARE(CONNECTION_STATUS_ENUM_FOREACH, connection_status_t)
 
 // Each line in the X macro takes

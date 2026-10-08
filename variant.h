@@ -11,12 +11,12 @@
 // #define ARGS_BOOL(x) x ? "true" : "false"
 //
 // Then define an X-macro:
-//
-// #define MY_VARIANT_FOREACH(X, ...)                                \
-//   X(int, count, "%d", ARGS_IDENT, __VA_ARGS__)                   \
-//   X(bool, enabled, FMT_BOOL, ARGS_BOOL, __VA_ARGS__)             \
-//   X(const char*, name, "%s", ARGS_IDENT, __VA_ARGS__)
-//
+/*
+   #define MY_VARIANT_FOREACH(X, ...)                                \
+     X(int, count, "%d", ARGS_IDENT, __VA_ARGS__)                   \
+     X(bool, enabled, FMT_BOOL, ARGS_BOOL, __VA_ARGS__)             \
+     X(const char*, name, "%s", ARGS_IDENT, __VA_ARGS__)
+*/
 // Each X entry takes:
 //  * type          - the C type for this variant member
 //  * name          - identifier for this variant member
